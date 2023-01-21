@@ -1,0 +1,467 @@
+---
+title: "Cyclistic Case Study"
+output: html_document
+fig_caption: yes
+theme: flatly
+toc_float: yes
+---
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+## Summary
+This case study was completed by Dimitrios Karatzanos in January 2023 as part of the Google Data Analytics Professional Certificate capstone unit. R has been used to complete this case study and then hosted online through github. Each tab at the top of this website documents the steps taken to complete this case study. 
+
+## Introduction
+
+### Scenario
+
+You are a junior data analyst working in the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director of marketing believes the company’s future success depends on maximizing the number of annual memberships. Therefore, your team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights, your team will design a new marketing strategy to convert casual riders into annual members. But first, Cyclistic executives must approve your recommendations, so they must be backed up with compelling data insights and professional data visualizations.
+
+### About the company
+
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5,824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime.
+
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments. One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers who purchase annual memberships are Cyclistic members.
+
+Cyclistic’s finance analysts have concluded that annual members are much more profitable than casual riders. Although the pricing flexibility helps Cyclistic attract more customers, Moreno believes that maximizing the number of annual members will be key to future growth. Rather than creating a marketing campaign that targets all-new customers, Moreno believes there is a very good chance to convert casual riders into members. She notes that casual riders are already aware of the Cyclistic program and have chosen Cyclistic for their mobility needs.
+Moreno has set a clear goal: Design marketing strategies aimed at converting casual riders into annual members. In order to do that, however, the marketing analyst team needs to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics. Moreno and her team are interested in analyzing the Cyclistic historical bike trip data to identify trends.
+
+
+## Data cleaning process
+
+### 1. Document Description
+This document outlines all of the steps taken to clean and transform Cyclistic’s raw datasets to prepare the data for the next stage of analysis. For the purpose of this case study, only data collected between January - December 2022 will be assessed. The dataset description can be located [here](https://divvybikes.com/system-data).
+
+Please note that Cyclistic is a fictional company. Raw data has been collected by Motivate International Inc, the company which operates the City of Chicago’s Divvy bicycle sharing service. The license to use this public dataset can be found [here](https://www.divvybikes.com/data-license-agreement).
+
+```{r}
+install.packages('tidyverse', repos = "http://cran.us.r-project.org")
+library(tidyverse)
+library(ggplot2)
+```
+### 2. Combine datasets
+
+#### 2.1 Load raw data
+
+Load the data
+```{r}
+jan<- read_csv("202201-divvy-tripdata.csv")
+feb<- read_csv("202202-divvy-tripdata.csv")
+mar<- read_csv("202203-divvy-tripdata.csv")
+apr<- read_csv("202204-divvy-tripdata.csv")
+may<-read_csv("202205-divvy-tripdata.csv")
+jun<- read_csv("202206-divvy-tripdata.csv")
+jul<- read_csv("202207-divvy-tripdata.csv")
+aug<- read_csv("202208-divvy-tripdata.csv")
+sep<- read_csv("202209-divvy-publictripdata.csv")
+oct<- read_csv("202210-divvy-tripdata.csv")
+nov<- read_csv("202211-divvy-tripdata.csv")
+dec<- read_csv("202212-divvy-tripdata.csv")
+```
+
+#### 2.2 Check data structure
+The structure summary outputs will help to identify if any of the individual raw datasets have different string types, column names etc.
+```html
+str(jan)
+str(feb)
+str(mar)
+str(apr)
+str(may)
+str(jun)
+str(jun)
+str(jul)
+str(aug)
+str(sep)
+str(oct)
+str(nov)
+str(dec)
+```
+#### 2.3 Merge datasets
+
+```{r}
+all_trips<- bind_rows(jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec)
+```
+
+### 3. Prepare dataset
+
+#### 3.1 Calculate ride length
+
+Ride length as a number string type will not only be useful for future analysis but will also help to identify if there are any invalid data points, i.e. ride lengths which are less than 0.
+
+```{r}
+all_trips$ride_length<- difftime(
+all_trips$ended_at,
+all_trips$started_at,
+units = "secs")
+```
+#### 3.2 Summarize by data variables
+Separate columns for month, day of week etc. will be useful for future analysis.
+
+```{r}
+# Month
+all_trips$month<- format(all_trips$started_at, "%m")
+# Week
+all_trips$week<- format(all_trips$started_at, "%W")
+# Day
+all_trips$day<- format(all_trips$started_at, "%A")
+# Date, YYYY-MM-DD
+all_trips$YMD<- format(all_trips$started_at, "%Y-%m-%d")
+# Time of Day, HH:MM:SS
+all_trips$ToD<- format(all_trips$started_at, "%H:%M:%S")
+```
+
+### 4. Clean dataset
+
+#### 4.1 Remove rows with ride length < 0
+
+As identified in section 3.2 there were a few invalid data points with ride lengths less than 0. These data points should be deleted from the cleaned dataset.
+
+```{r}
+all_trips_cleaned<- all_trips %>%
+filter(!(ride_length <0))
+```
+
+#### 4.2 Remove incomplete rows
+
+We need to identify if there are incomplete rows or duplicates
+
+```{r}
+#identify if there are incomplete rows in ride_length
+sum(is.na(all_trips_cleaned$ride_length))
+```
+```{r}
+#identify if there are duplicates in ride_id
+ride_id_check<- all_trips_cleaned %>%
+count(ride_id) %>%
+filter(n > 1)
+view(ride_id_check)
+```
+
+### 5. Save the dataset
+
+The cleaned dataset should be saved as a csv.
+```html
+fwrite(
+  all_trips_cleaned, 
+  "C:\\Users\\karat\\Documents\\Portfolio\\01. Cyclistic\\03. Analysis\\01-03-03 all_trips_cleaned.csv", 
+  col.names = TRUE,
+  row.names = FALSE
+  )
+```
+
+### 6. Analysis
+
+Before doing the analysis we need to install and load the ggthemes library.
+
+```{r}
+install.packages('ggthemes', repos = "http://cran.us.r-project.org")
+library(ggthemes)
+```
+
+#### 6.1 Member vs Casual
+
+First of all, we will identify how many members and how many customers there are.
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+ggplot(data=all_trips_cleaned, aes(x=member_casual, fill=member_casual)) +
+geom_bar() +
+geom_text(stat='count', aes(label=..count..),vjust = 1.5, color= "white") +
+labs(title = "Members vs Casual Users", x="", y = "Count")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,lineheight = .9,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.ticks=element_blank(),
+axis.text.y = element_blank(),
+legend.position="none")
+```
+
+
+#### 6.2 Favorite bike type (Members vs Casual)
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned %>%
+ggplot(mapping=aes(x=rideable_type, fill=member_casual)) +
+geom_bar(position = "dodge") +
+geom_text(stat='count', aes(label=..count..), position = position_dodge(width = 0.9),hjust= 1, color="black", face="bold.italic") +
+coord_flip()+
+labs(title="Favorite bike type", subtitle= "Member vs Casual", x="Bike types")+
+scale_fill_discrete(name = "Member vs Casual")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.ticks=element_blank(),
+axis.text.x = element_blank())
+```
+
+#### 6.3.1 Total monthly distribution
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned %>%
+ggplot(mapping=aes(x=month, fill=month)) +
+geom_bar(position = "dodge")+
+labs(title="Number of rides each month", x="Months")+
+scale_color_gradient(low = "blue", high = "red")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.ticks=element_blank(),
+axis.text.y = element_blank(),
+legend.position="none")
+```
+
+#### 6.3.2 Monthly distribution (Members vs Casual)
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned %>%
+ggplot(mapping=aes(x=month, fill=member_casual))+
+geom_bar()+
+facet_wrap(~member_casual)+
+labs(title="Monthly number of rides", subtitle="Members vs Casual", x = "Months")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.ticks=element_blank(),
+axis.text.y = element_blank(),
+legend.position="none")
+```
+
+#### 6.4 Weekday distribution (Members vs Casual)
+
+First we need to reorder the weekdays (Monday to Sunday)
+
+```{r}
+all_trips_cleaned$day <- factor(all_trips_cleaned$day, levels = c("Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή", "Σάββατο", "Κυριακή"))
+```
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned %>%
+ggplot(mapping=aes(x=day, fill=member_casual))+
+geom_bar()+
+facet_wrap(~member_casual)+
+labs(title="Weekday distribution", subtitle="Members vs Casual", "Day of the Week")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.ticks=element_blank(),
+axis.text.y = element_blank(),
+axis.text.x = element_text(angle=45),
+legend.position="none")
+```
+
+#### 6.5.1 Members top-5 start stations
+
+Drop NA
+
+```{r}
+all_trips_cleaned_no_na<- all_trips_cleaned %>% drop_na()
+```
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_no_na %>%
+filter(all_trips_cleaned_no_na$member_casual=="member") %>%
+group_by(start_station_name) %>%
+summarise(n=n()) %>%
+arrange(desc(n)) %>%
+slice_max(n,n=5) %>%
+ggplot(aes(x=start_station_name, y=n))+
+geom_col(fill="#00BFC4")+
+coord_flip()+
+labs(title="Members top 5 start station", x="Start Station",y="Count")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.text.x = element_blank(),
+legend.position="none")
+```
+
+#### 6.5.2 Casual customers top-5 start stations
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_no_na %>%
+filter(all_trips_cleaned_no_na$member_casual=="casual") %>%
+group_by(start_station_name) %>%
+summarise(n=n()) %>%
+arrange(desc(n)) %>%
+slice_max(n,n=5) %>%
+ggplot(aes(x=start_station_name, y=n))+
+geom_col(fill="#F8766D")+
+coord_flip()+
+labs(title="Casual top 5 start station", x="Start Station",y="Count")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.text.x = element_blank(),
+legend.position="none")
+```
+
+#### 6.6.1 Members top-5 end stations
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_no_na %>%
+filter(all_trips_cleaned_no_na$member_casual=="member") %>%
+group_by(end_station_name) %>%
+summarise(n=n()) %>%
+arrange(desc(n)) %>%
+slice_max(n,n=5) %>%
+ggplot(aes(x=end_station_name, y=n))+
+geom_col(fill="#00BFC4")+
+coord_flip()+
+labs(title="Members top 5 end station", x="End Station",y="Count")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.text.x = element_blank(),
+legend.position="none")
+```
+
+#### 6.6.2 Casual customers top-5 end stations
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_no_na %>%
+filter(all_trips_cleaned_no_na$member_casual=="casual") %>%
+group_by(end_station_name) %>%
+summarise(n=n()) %>%
+arrange(desc(n)) %>%
+slice_max(n,n=5) %>%
+ggplot(aes(x=end_station_name, y=n))+
+geom_col(fill="#F8766D")+
+coord_flip()+
+labs(title="Casual top 5 end station", x="End Station",y="Count")+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.text.x = element_blank(),
+legend.position="none")
+```
+
+### 6.7 Most common routes
+
+Merge start and end stations
+```{r}
+all_trips_cleaned_no_na$route <- paste(all_trips_cleaned_no_na$start_station_name,all_trips_cleaned_no_na$end_station_name,sep=" to ")
+```
+
+#### 6.7.1 Members most common routes 
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_no_na %>%
+filter(all_trips_cleaned_no_na$member_casual=="member") %>%
+group_by(route) %>%
+summarise(n=n()) %>%
+arrange(desc(n)) %>%
+slice_max(n,n=5) %>%
+ggplot(aes(x=route, y=n))+
+geom_col(fill="#00BFC4")+
+labs(title="Members most used route", x="Route", y="Count")+
+coord_flip()+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.text.x = element_blank(),
+legend.position="none")
+```
+
+#### 6.7.2 Casual customers most common routes
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_no_na %>%
+filter(all_trips_cleaned_no_na$member_casual=="casual") %>%
+group_by(route) %>%
+summarise(n=n()) %>%
+arrange(desc(n)) %>%
+slice_max(n,n=5) %>%
+ggplot(aes(x=route, y=n))+
+geom_col(fill="#F8766D")+
+labs(title="Members most used route", x="Route", y="Count")+
+coord_flip()+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.text.x = element_blank(),
+legend.position="none")
+```
+
+#### 6.8 Ride length
+
+We suppose that casual customers use our services for less than a day. Therefore, we create a column in a new dataframe to separate the people that use the bike for 1 day, and the people who are using it more than a day.
+
+```{r}
+all_trips_cleaned_2<- all_trips_cleaned %>% 
+drop_na() %>% 
+mutate(group_day = case_when(
+ride_length >0 & ride_length<=86400 ~"<1 day",
+ride_length>86400 ~">1 day."
+))
+```
+```{r}
+all_trips_cleaned_2 %>%
+group_by(member_casual, group_day) %>%
+summarize(n=n()) %>%
+arrange(group_day)
+```
+Eliminate the NA's
+
+```{r}
+all_trips_cleaned_2<- all_trips_cleaned_2 %>% drop_na()
+```
+
+```{r fig.align="center", echo = FALSE,fig.width= 14}
+all_trips_cleaned_2 %>%
+ggplot(aes(x=group_day)) +
+geom_bar(fill="#7CAE00")+
+geom_text(stat='count', aes(label=..count..), hjust=1,color="black") +
+labs(title="Rental time", x="", y="")+
+coord_flip()+
+theme_solarized()+
+theme(axis.title = element_text(size=16,
+family="Times",
+face = "bold.italic",
+color="dark grey"),
+axis.ticks=element_blank(),
+axis.text.x=element_blank(),
+legend.position="none")
+```
+
+### 7. Recommendations
+As identified in the client brief, the marketing recommendations concluded from the insights of this case study should not be focused on encouraging new customers to use the Cyclistic bike service but instead focus on encouraging casual riders to convert to annual memberships.
+
+Some possible marketing recommendations for Cyclistic are as follows:
+
+#### Electric bike fever
+As we can see in 6.3.2 Casual customers prefer using electric bikes. Although, if we offer better deals for members on electric bikes they could apply for annual membership
+
+#### Summer fling
+As it can be seen in 6.3.2 the most popular time of the year for casual customers is summer. Therefore, it will be wise to enhance our advertisement during June, July, and August.
+
+#### Weekend warriors
+6.4 shows that casual customers prefer weekends, while members prefer weekdays. This could be used for advertising campaigns.
+
+#### Most used routes
+It seems that members and casual customers use different start and end stations. Therefore we can focus our advertisements at the most used casual customers' stations.
+
+#### One day
+Almost all of our customers use the bikes for just one day. We can create more campaigns and offers about the more-than-one-day usage.
+
+
+
